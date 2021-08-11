@@ -18,7 +18,7 @@ public interface AccountService {
     void deleteAccount(Account a, Customer c);
     boolean joinCustomer(Account a, Customer c, int customerToJoinId);
     boolean removeJoinedCustomer(Account a, Customer c, int customerIdToRemove);
-    void changeAccountOwner(Account a, Customer old_owner, Customer new_owner);
+    boolean changeAccountOwner(Account a, Customer old_owner, int newOwnerId);
     boolean checkOwnerShip(Account a, Customer c);
     List<Transaction> getAccountTransactions(Account a);
 

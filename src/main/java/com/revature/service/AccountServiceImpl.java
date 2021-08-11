@@ -5,6 +5,7 @@ import com.revature.model.Customer;
 import com.revature.model.Transaction;
 import com.revature.repo.AccountDAO;
 import com.revature.repo.CustomerDAO;
+import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,7 @@ public class AccountServiceImpl implements AccountService {
     private final AccountDAO aDao;
     private final CustomerDAO cDao;
 
+    private final Logger logger = Logger.getLogger("BankOnIt");
 
     public AccountServiceImpl(AccountDAO aDao, CustomerDAO cDao) {
         this.aDao = aDao;
@@ -59,11 +61,8 @@ public class AccountServiceImpl implements AccountService {
         // record the transaction, pass in the customer
         if (amount > 0) {
             double new_balance = a.getBalance() - amount;
-            System.out.println();
             if (new_balance<=0) {
-                System.out.println("\u001B[31m");
-                System.out.println("\nYou cannot have a negative balance\n");
-                System.out.println("\u001B[0m");
+                logger.warn("You cannot have a negative balance");
                 return false;
             }
              else {
@@ -102,18 +101,18 @@ public class AccountServiceImpl implements AccountService {
         if (aDao.selectAccountOwner(a, c)) {
             boolean alreadyJoined = aDao.selectCustomerIsJoined(a, idToJoin);
             if (alreadyJoined) {
-                System.out.printf("Customer %s is already a joint customer of %s", idToJoin, a.getNickname());
+                logger.info(String.format("Customer %s is already a joint customer of %s", idToJoin, a.getNickname()));
             } else {
                 Customer toJoinCustomer = cDao.selectCustomer(idToJoin);
                 if (toJoinCustomer != null) {
                     success = aDao.insertJoinedCustomer(a, idToJoin);
-                    System.out.printf("%s %s is now joined to %s", toJoinCustomer.getFirst(), toJoinCustomer.getLast(), a.getNickname());
+                    logger.info(String.format("%s %s is now joined to %s", toJoinCustomer.getFirst(), toJoinCustomer.getLast(), a.getNickname()));
                 } else {
-                    System.out.printf("there is no customer with id=%d", idToJoin);
+                    logger.info(String.format("There is no Customer with id=%d", idToJoin));
                 }
             }
         } else {
-            System.out.println("You are not owner of this account and cannot add customers");
+            logger.warn("You are not owner of this account and cannot add customers");
         }
         return success;
     }
@@ -121,43 +120,44 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public boolean removeJoinedCustomer(Account a, Customer c, int customerIdToRemove) {
-        // Clean this up if possible, sometime... later
         boolean success = false;
         if (c.getId() == customerIdToRemove) {
-            System.out.println("You cannot remove the owner. Close the account or transfer ownership.");
+            logger.info("You cannot remove the owner. Close the account or transfer ownership.");
             return false;
         }
         else if (aDao.selectAccountOwner(a, c)) { // make sure they're the owner, even though the ui protects non-owners from this method
             boolean cusIsJoined = aDao.selectCustomerIsJoined(a, customerIdToRemove);
             if (!cusIsJoined){
-                System.out.printf("Customer %d is not joined to %s", customerIdToRemove, a.getNickname());
+                logger.info(String.format("Customer %d is not joined to %s", customerIdToRemove, a.getNickname()));
                 return false;
             }
             Customer joined = cDao.selectCustomer(customerIdToRemove);
             success = aDao.deleteJoinedCustomer(a, customerIdToRemove);
             if (success) {
-                System.out.printf("%s %s has been removed from %s", joined.getFirst(), joined.getLast(), a.getNickname());
+                logger.info(String.format("%s %s has been removed from %s", joined.getFirst(), joined.getLast(), a.getNickname()));
             }
         }
         return success;
     }
 
     @Override
-    public void changeAccountOwner(Account a, Customer old_owner, Customer new_owner) {
+    public boolean changeAccountOwner(Account a, Customer old_owner, int newOwnerId) {
+        Customer newOwner = cDao.selectCustomer(newOwnerId);
         if (aDao.selectAccountOwner(a, old_owner)) { // the UI prevents non owners from seeing this option, but added anyways
-            Customer newOwner = cDao.selectCustomer(new_owner.getId());
             if (newOwner != null){
-            boolean newOwnerJoinedToAccount = aDao.selectCustomerIsJoined(a, new_owner.getId());
+            boolean newOwnerJoinedToAccount = aDao.selectCustomerIsJoined(a, newOwner.getId());
             if (newOwnerJoinedToAccount) {
-                aDao.updateAccountOwner(a, old_owner, new_owner);
+                aDao.updateAccountOwner(a, old_owner, newOwner);
+                logger.info(String.format("%s %s has been made owner of %s", newOwner.getFirst(), newOwner.getLast(), a.getNickname()));
+                return true;
             } else {
-                // check if real customer
-                System.out.println("Cannot make that customer the owner, join them to the account first");
+                logger.info("Cannot make that customer the owner, join them to the account first");
             }
         } else {
-                System.out.println("Invalid customer Id");
+                logger.warn("Invalid customer Id");
             }
         }
+        return false;
     }
 
     @Override

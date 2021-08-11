@@ -11,6 +11,7 @@ import com.revature.service.AccountService;
 import com.revature.service.AccountServiceImpl;
 import com.revature.service.CustomerService;
 import com.revature.service.CustomerServiceImpl;
+import org.apache.log4j.Logger;
 
 import java.util.*;
 
@@ -19,7 +20,6 @@ public class BankPresentationImpl implements BankPresentation {
     // codes to change text colors
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_BLACK = "\u001B[30m";
-    public static final String ANSI_RED = "\u001B[31m";
     public static final String ANSI_GREEN = "\u001B[32m";
 
     // codes to change background colors
@@ -27,13 +27,14 @@ public class BankPresentationImpl implements BankPresentation {
 
     private static final String nSixTabs = "\n\t\t\t\t\t\t";
     private static final String sixTabs = "\t\t\t\t\t\t";
-    private static final String fourTabs = "\t\t\t\t";
 
     private final CustomerDAO cDao = new CustomerDaoImpl();
     private final CustomerService cService = new CustomerServiceImpl(cDao);
 
     private final AccountDAO aDao = new AccountDaoImpl();
     private final AccountService aService = new AccountServiceImpl(aDao, cDao);
+
+    private final Logger logger = Logger.getLogger("BankOnIT");
 
     private static final Scanner scanner = new Scanner(System.in);
 
@@ -59,9 +60,7 @@ public class BankPresentationImpl implements BankPresentation {
                 signUp();
                 break;
                 default:
-                    System.out.print(ANSI_RED);
-                    System.out.println("\nInvalid Input" + ANSI_RESET);
-                    System.out.println(ANSI_RESET);
+                    logger.warn("Invalid Input");
                     welcome();
         }
     }
@@ -107,9 +106,7 @@ public class BankPresentationImpl implements BankPresentation {
         } else if (username.equals("z")) {
             welcome();
         } else if (cService.usernameExists(username)) {
-            System.out.println(ANSI_RED);
-            System.out.println("\n\tUsername Already Taken\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Username Already Taken");
             rollUsername();
         }
         return username;
@@ -142,9 +139,7 @@ public class BankPresentationImpl implements BankPresentation {
 
     @Override
     public void invalidCredentials() {
-        System.out.println(ANSI_RED);
-        System.out.println("\n\tInvalid Credentials\n");
-        System.out.println(ANSI_RESET);
+        logger.warn("Invalid Credentials");
         System.out.println("\t\t[1] Re-Enter Login Information");
         System.out.println("\t\t[2] Create User Account");
         System.out.println("\t\t[x] Exit\n");
@@ -163,7 +158,7 @@ public class BankPresentationImpl implements BankPresentation {
                 signUp();
                 break;
             default:
-                System.out.println(ANSI_RED+"Invalid Input"+ANSI_RESET);
+                logger.warn("Invalid Input");
                 invalidCredentials();
         }
     }
@@ -204,7 +199,7 @@ public class BankPresentationImpl implements BankPresentation {
                 a.setType((byte)2);
                 break;
             default:
-                System.out.println(ANSI_RED+"Invalid input"+ANSI_RESET);
+                logger.warn("Invalid Input");
                 createAccount(c);
         }
         StringBuilder nicknameBlock = new StringBuilder(nSixTabs);
@@ -243,7 +238,7 @@ public class BankPresentationImpl implements BankPresentation {
                 try {
                     double bal = Double.parseDouble(balance);
                     if (bal <= 0) {
-                        System.out.println(ANSI_RED+"You must enter a positive number"+ANSI_RESET);
+                        logger.warn("You must enter a positive number");
                         createAccount(c);
                     }
                     a.setBalance(bal);
@@ -251,7 +246,7 @@ public class BankPresentationImpl implements BankPresentation {
                     accountSummary(c);
                 }
                 catch (NumberFormatException e) {
-                    System.out.println(ANSI_RED+"You must enter a positive number"+ANSI_RESET);
+                    logger.warn("You must enter a positive number");
                     createAccount(c);
                 }
         }
@@ -333,9 +328,7 @@ public class BankPresentationImpl implements BankPresentation {
                 deleteAccount(c, a);
                 break;
             default:
-                System.out.println(ANSI_RED);
-                System.out.println("\nInvalid Input\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Invalid Input");
                 accountOptions(c, a);
         }
     }
@@ -347,16 +340,12 @@ public class BankPresentationImpl implements BankPresentation {
         try {
             double goodAmount = Double.parseDouble(amount);
             if (goodAmount <= 0) {
-                System.out.println(ANSI_RED);
-                System.out.println("\nInvalid Input\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Invalid Input");
                 accountDetails(c, a);
             }
             aService.Deposit(c, a, goodAmount);
         } catch (Exception e) {
-            System.out.println(ANSI_RED);
-            System.out.println("\nInvalid Input\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Invalid Input");
             accountDetails(c, a);
         }
         accountDetails(c, a);
@@ -370,21 +359,15 @@ public class BankPresentationImpl implements BankPresentation {
         try {
             double goodAmount = Double.parseDouble(amount);
             if (goodAmount <= 0) {
-                System.out.println(ANSI_RED);
-                System.out.println("\nInvalid Input\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Invalid Input");
                 accountDetails(c, a);
             }
             boolean success = aService.Withdrawal(c, a, goodAmount);
             if (!success) {
-                System.out.println(ANSI_RED);
-                System.out.println("\nCould not complete transaction\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Could not complete the transaction");
             }
         } catch (Exception e) {
-            System.out.println(ANSI_RED);
-            System.out.println("\nInvalid Input\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Invalid Input");
             accountDetails(c, a);
         }
         accountDetails(c, a);
@@ -462,9 +445,7 @@ public class BankPresentationImpl implements BankPresentation {
                     break;
             }
         } else {
-            System.out.println(ANSI_RED);
-            System.out.println("\nInvalid Input\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Invalid Input");
             transfer(c, checking, savings);
         }
         prettyTransfer(fromAccount, null);
@@ -495,9 +476,7 @@ public class BankPresentationImpl implements BankPresentation {
                     break;
             }
         } else {
-            System.out.println(ANSI_RED);
-            System.out.println("\nInvalid Input\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Invalid Input");
             transfer(c, checking, savings);
         }
 
@@ -511,22 +490,16 @@ public class BankPresentationImpl implements BankPresentation {
             if (goodAmount > 0) {
                 boolean transferSuccessful = aService.Transfer(c, fromAccount, toAccount, Double.parseDouble(amount));
                 if (!transferSuccessful) {
-                    System.out.println(ANSI_RED);
-                    System.out.println("\nThere was a problem processing that transfer\n");
-                    System.out.println(ANSI_RESET);
+                    logger.warn("There was a problem processing that transfer");
                     transfer(c, checking, savings);
                 }
                 accountSummary(c);
             } else {
-                System.out.println(ANSI_RED);
-                System.out.println("\nTransfer amount must be entered as a positive number\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Transfer amount must be entered as a positive number");
                 transfer(c, checking, savings);
             }
         } catch (NumberFormatException e) {
-            System.out.println(ANSI_RED);
-            System.out.println("\nTransfer amount must be entered as a number\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Transfer amount must be entered as a number");
             transfer(c, checking, savings);
         }
     }
@@ -572,10 +545,7 @@ public class BankPresentationImpl implements BankPresentation {
                 accountSummary(c);
                 break;
             default:
-                System.out.print(fourTabs);
-                System.out.print(ANSI_RED);
-                System.out.print("\nInvalid Input\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Invalid Input");
                 viewTransactions(c, a, transactions);
         }
     }
@@ -613,10 +583,7 @@ public class BankPresentationImpl implements BankPresentation {
                 accountSummary(c);
                 break;
             default:
-                System.out.print(sixTabs);
-                System.out.print(ANSI_RED);
-                System.out.print("\nInvalid Input\n");
-                System.out.println(ANSI_RESET);
+                logger.warn("Invalid Input");
                 viewAllTransactions(c, transactions);
         }
     }
@@ -639,18 +606,20 @@ public class BankPresentationImpl implements BankPresentation {
                 try {
                         int newOwnerId = Integer.parseInt(newOwnerIdStr);
                         if (newOwnerId == c.getId()) {
-                            System.out.println("That's your user id and you're already the owner.\nEnter a user id of anyone joined to this account to transfer ownership");
+                            logger.info("That's your user id and you're already the owner.\nEnter a user id of anyone joined to this account to transfer ownership");
                             transferAccountOwner(c, a);
                         }
-                        Customer newOwner = new Customer();
-                        newOwner.setId(newOwnerId);
-                        aService.changeAccountOwner(a, c, newOwner);
-
+//                        Customer newOwner = new Customer();
+//                        newOwner.setId(newOwnerId);
+                        boolean success = aService.changeAccountOwner(a, c, newOwnerId);
+                        if (success) {
+                            accountDetails(c, a);
+                        } else {
+                            transferAccountOwner(c, a);
+                        }
                     } catch (NumberFormatException e) {
-                        System.out.print(nSixTabs);
-                        System.out.print(ANSI_RED);
-                        System.out.print("You must enter a number");
-                        System.out.println(ANSI_RESET);
+                        logger.warn("You must enter a number");
+                        transferAccountOwner(c, a);
                     }
             accountDetails(c, a);
         }
@@ -679,10 +648,7 @@ public class BankPresentationImpl implements BankPresentation {
                         addCustomerToAccount(a, c);
                     }
                 } catch (NumberFormatException e) {
-                    System.out.print(nSixTabs);
-                    System.out.print(ANSI_RED);
-                    System.out.print("You must enter a number");
-                    System.out.println(ANSI_RESET);
+                    logger.warn("You must enter a number");
                     addCustomerToAccount(a, c);
                 }
         }
@@ -713,10 +679,7 @@ public class BankPresentationImpl implements BankPresentation {
                     removeCustomerFromAccount(a, c);
                 }
             } catch (NumberFormatException e) {
-                System.out.print(nSixTabs);
-                System.out.print(ANSI_RED);
-                System.out.print("You must enter a number");
-                System.out.println(ANSI_RESET);
+                logger.warn("You must enter a number");
                 removeCustomerFromAccount(a, c);
             }
             accountSummary(c);
@@ -813,9 +776,7 @@ public class BankPresentationImpl implements BankPresentation {
                     break;
             }
         } else {
-            System.out.println(ANSI_RED);
-            System.out.println("\nInvalid Input\n");
-            System.out.println(ANSI_RESET);
+            logger.warn("Invalid Input");
             printAccounts(accounts, c);
         }
 
