@@ -962,7 +962,7 @@ public class BankPresentationImpl implements BankPresentation {
      */
     @Override
     public void deleteAccount(Customer c, Account a) {
-        boolean confirmed = rollDeleteConfirm(a.getNickname());
+        boolean confirmed = rollDeleteConfirm(c, a);
         if (confirmed) {
             aService.deleteAccount(a, c);
         }
@@ -972,24 +972,26 @@ public class BankPresentationImpl implements BankPresentation {
     /**
      * Helper method for deleteAccount, called recursively until user
      * explicitly types 'yes' or 'no' as confirmation.
-     * @param nickname - String the nickname given to the account
-     * @return boolean value representing the user's confirmation to close an account
+     * @param c Customer attempting to delete
+     * @param a Accoount being deleted
+     * @return boolean confirming delete
      */
-    private boolean rollDeleteConfirm(String nickname) {
-        System.out.printf("Are you sure you want to close %s? [yes/no]: ", nickname);
+    private boolean rollDeleteConfirm(Customer c, Account a) {
+        boolean confirm = false;
+        System.out.printf("Are you sure you want to close %s? [yes/no]: ", a.getNickname());
         String ans = scanner.nextLine();
         switch (ans) {
             case "yes":
-                return true;
+                confirm = true;
+                break;
             case "no":
-                return false;
+                break;
             default:
-                System.out.println("Must enter 'yes' or 'no'.");
-                rollDeleteConfirm(nickname);
+                logger.warn("Must enter 'yes' or 'no'.");
+                deleteAccount(c, a);
         }
-        return false;
+        return confirm;
     }
-
 
     /**
      * Helper method used throughout the class to display text in a consistent format.
