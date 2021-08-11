@@ -2,6 +2,10 @@ package com.revature.util;
 
 import java.sql.*;
 
+/**
+ * Class to instantiate a connection to the database whenever needed
+ */
+
 public class ConnectionFactory {
 
     private static final String DB_HOST=System.getenv("DB_HOST");
@@ -13,6 +17,11 @@ public class ConnectionFactory {
 
     private static Connection connection;
 
+    /**
+     * Get the connection to the database
+     * @return Connection
+     * @throws SQLException
+     */
     public static Connection getConnection() throws SQLException{
         connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
         return connection;

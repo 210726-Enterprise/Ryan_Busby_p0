@@ -1,5 +1,15 @@
 package com.revature.model;
 
+/**
+ * Transaction represents a single action on an account balance.
+ * id - uniquely identifies the transaction.
+ * accountId - the account the action took place on.
+ * customerId - the id of the customer who preformed the action.
+ * name - the name of the customer who preformed the action.
+ * accountNickname - the nickname of the account acted on.
+ * timestamp - when the action took place.
+ * amount - the amount added or subtracted from the account balance.
+ */
 public class Transaction {
     private int id;
     private int accountId;

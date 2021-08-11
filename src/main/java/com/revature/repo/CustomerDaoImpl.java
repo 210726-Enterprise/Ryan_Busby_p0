@@ -9,10 +9,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
+import com.revature.collection.RevaList;
+import com.revature.collection.RevArrayList;
 
+/**
+ * CustomerDaoImpl handles all the create, read, update, and delete operations to the database relevant to customers.
+ */
 public class CustomerDaoImpl implements CustomerDAO{
+
+    /**
+     * Insert into the customer table
+     * @param c - Customer object containing the data to be inserted
+     * @param password - String the password to persist in the database
+     * @return int - the id of the newly created customer
+     */
     @Override
     public int insertCustomer(Customer c, String password) {
         int newCustomerId = 0;
@@ -28,11 +38,17 @@ public class CustomerDaoImpl implements CustomerDAO{
                 newCustomerId = rs.getInt("id");
             }
         } catch (SQLException e) {
-//            e.printStackTrace(); // log this? nah
+            e.printStackTrace();
         }
         return newCustomerId;
     }
 
+    /**
+     * Select from the customer table
+     * @param username - String the username being searched for
+     * @param password - String the password being searched for
+     * @return Customer object containing their relevant data.
+     */
     @Override
     public Customer selectCustomer(String username, String password) {
         String sql = "SELECT * FROM customer WHERE username = ? AND pword = crypt(?, pword)";
@@ -55,6 +71,12 @@ public class CustomerDaoImpl implements CustomerDAO{
         }
         return customer;
     }
+
+    /**
+     * Select user from customer
+     * @param username - String the username being searched for
+     * @return boolean - true if that username is in the customer table.
+     */
     @Override
     public boolean selectUserName(String username) {
         String sql = "SELECT username FROM customer WHERE username=?";
@@ -73,6 +95,11 @@ public class CustomerDaoImpl implements CustomerDAO{
         return usernameExists;
     }
 
+    /**
+     * Select from customer table
+     * @param customerId - int the id of the customer being searched for
+     * @return Customer object containing their data
+     */
     @Override
     public Customer selectCustomer(int customerId) {
         Customer c = null;
@@ -93,8 +120,13 @@ public class CustomerDaoImpl implements CustomerDAO{
         return c;
     }
 
+    /**
+     * Select all data relevant to a transaction from a join
+     * @param c - Customer object containing the id being searched for
+     * @return ArrayList of Transaction object
+     */
     @Override
-    public List<Transaction> selectTransactions(Customer c) {
+    public RevaList<Transaction> selectTransactions(Customer c) {
         String sql =
                 "SELECT t.id, t.account_id, c.id as customer_id, t.ts, c.first, c.last, a.nickname, t.amount FROM transaction t \n" +
                         "JOIN customer c ON t.customer_id = c.id \n" +
@@ -102,7 +134,7 @@ public class CustomerDaoImpl implements CustomerDAO{
                         "WHERE account_id IN \n" +
                         "(SELECT account_id FROM customer_account WHERE customer_id = ?)\n" +
                         "ORDER BY t.ts desc;";
-        List<Transaction> transactions = new ArrayList<>();
+        RevaList<Transaction> transactions = new RevArrayList<>();
         try (Connection connection = ConnectionFactory.getConnection()) {
             PreparedStatement ps = connection.prepareStatement(sql);
             ps.setInt(1, c.getId());

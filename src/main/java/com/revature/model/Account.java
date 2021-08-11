@@ -1,5 +1,12 @@
 package com.revature.model;
 
+/**
+ * Account represents a single account.
+ * id - the unique identifier.
+ * nickname - whatever the customer wants to call it.
+ * type - 1 for checking, 2 for savings.
+ * balance - how much money is contained in the account.
+ */
 public class Account {
     private int id;
     private String nickname;

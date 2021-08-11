@@ -1,5 +1,16 @@
 package com.revature.model;
 
+/**
+ * Customer represents a person who has a username and password for this application
+ * id - The unique identifier.
+ * first - Their inputted first name.
+ * last - Their inputted last name.
+ * username - Their inputted username.
+ *
+ * Their password is saved in the database, and a comparison is made
+ * when they log in, but is never brought into memory from the database (its encrypted),
+ * or explicitly attached to this.
+ */
 public class Customer {
     private int id;
     private String first;

@@ -4,7 +4,7 @@ import com.revature.model.Account;
 import com.revature.model.Customer;
 import com.revature.model.Transaction;
 
-import java.util.List;
+import com.revature.collection.RevaList;
 
 public interface AccountDAO {
     //CREATE
@@ -14,10 +14,10 @@ public interface AccountDAO {
     void insertTransaction(Account a, Customer c, Double amount);
 
     //READ
-    List<Account> selectCustomerAccount(Customer c);
+    RevaList<Account> selectCustomerAccount(Customer c);
 //    Account selectAccountById(int accountId);
     boolean selectAccountOwner(Account a, Customer c);
-    List<Transaction> selectAccountTransactions(Account a);
+    RevaList<Transaction> selectAccountTransactions(Account a);
     boolean selectCustomerIsJoined(Account a, int customerId);
 
 

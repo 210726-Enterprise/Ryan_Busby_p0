@@ -1,4 +1,4 @@
-package com.revature.presentation;
+package com.revature.util;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -9,6 +9,9 @@ import java.util.stream.Stream;
 //source:
 //https://howtodoinjava.com/java/io/java-read-file-to-string-examples/
 
+/**
+ * A helper class to easily read the character art from a file.
+ */
 public class PageReader {
     public static String readPage(String filePath) {
         StringBuilder contentBuilder = new StringBuilder();

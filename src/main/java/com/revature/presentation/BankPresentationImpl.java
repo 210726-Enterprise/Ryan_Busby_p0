@@ -11,9 +11,26 @@ import com.revature.service.AccountService;
 import com.revature.service.AccountServiceImpl;
 import com.revature.service.CustomerService;
 import com.revature.service.CustomerServiceImpl;
+import com.revature.util.PageReader;
 import org.apache.log4j.Logger;
 
-import java.util.*;
+import java.util.Locale;
+import java.util.Scanner;
+import com.revature.collection.RevaList;
+import com.revature.collection.RevArrayList;
+
+/**
+ * BankPresentationImpl handles all user interaction.
+ * It begins with welcome() and depending on the input, directs to appropriate menus.
+ *
+ * When user successfully signs in, a Customer object is instantiated, and called upon
+ * throughout this class.
+ *
+ * When a user invokes signUp, a Customer object is instantiated, and called upon
+ * throughout this class.
+ */
+
+//TODO: Make private method to take in all those string builder calls that are repeated so many times.
 
 public class BankPresentationImpl implements BankPresentation {
 
@@ -25,19 +42,27 @@ public class BankPresentationImpl implements BankPresentation {
     // codes to change background colors
     public static final String ANSI_WHITE_BACKGROUND = "\u001B[47m";
 
+    // common spacing for consistent display
     private static final String nSixTabs = "\n\t\t\t\t\t\t";
     private static final String sixTabs = "\t\t\t\t\t\t";
 
+    // the customer service object used throughout this presentation layer.
     private final CustomerDAO cDao = new CustomerDaoImpl();
     private final CustomerService cService = new CustomerServiceImpl(cDao);
 
+    // the account service object used throughout this presentation layer.
     private final AccountDAO aDao = new AccountDaoImpl();
     private final AccountService aService = new AccountServiceImpl(aDao, cDao);
 
+    // the logger which is configured in BankOnIT.java
     private final Logger logger = Logger.getLogger("BankOnIT");
 
+    // the scanner object use to collect user input
     private static final Scanner scanner = new Scanner(System.in);
 
+    /**
+     * welcome() is how a user starts utilizing the application. Directing them to either signUp, or logIn.
+     */
     @Override
     public void welcome() {
         System.out.print(ANSI_GREEN);
@@ -65,6 +90,10 @@ public class BankPresentationImpl implements BankPresentation {
         }
     }
 
+    /**
+     * signUp() is used to Create a Customer object in memory,
+     * and persist the customer's name and login credentials to a database.
+     */
     @Override
     public void signUp(){
         String title = "Bank on IT - Customer Sign Up";
@@ -74,6 +103,7 @@ public class BankPresentationImpl implements BankPresentation {
         System.out.println(line2);
         System.out.print("\n\n\tFirst Name: ");
         String first = scanner.nextLine();
+        // using if / else here oppose to switch because there are only two valid options.
         if (first.equals("x")) {
             System.exit(0);
         } else if (first.equals("z")) {
@@ -98,6 +128,13 @@ public class BankPresentationImpl implements BankPresentation {
         cService.createCustomer(c, password);
         createAccount(c);
     }
+
+    /**
+     * A helper method to recursively ask for a unique username.
+     * It will call CustomerService.usernameExists to determine if
+     * the username being entered already exists in the database
+     * @return The unique username the customer needs to logIn.
+     */
     private String rollUsername() {
         System.out.print("\tUsername: ");
         String username = scanner.nextLine();
@@ -111,6 +148,17 @@ public class BankPresentationImpl implements BankPresentation {
         }
         return username;
     }
+
+    /**
+     * When an existing Customer wants to access their data,
+     * they use logIn. It calls CustomerService.getCustomer
+     * with their username and password, and if there is a
+     * matching username / password, a Customer object is
+     * instantiated in memory and used throughout this class.
+     * When the successfully logIn, they are given the accountSummary.
+     * Customer as an instance variable id, which is how all
+     * the relevant account information is tied to them.
+     */
 
     @Override
     public void logIn() {
@@ -137,6 +185,11 @@ public class BankPresentationImpl implements BankPresentation {
             }
         }
 
+    /**
+     * If the user enters a username and password that don't match any
+     * in the database, they will land here. Given options to signUp
+     * or re-enter their login information.
+     */
     @Override
     public void invalidCredentials() {
         logger.warn("Invalid Credentials");
@@ -162,6 +215,17 @@ public class BankPresentationImpl implements BankPresentation {
                 invalidCredentials();
         }
     }
+
+    /**
+     *
+     * @param c - The customer who is currently using the application. When they signIn,
+     *          a Customer object is instantiated and is used throughout.
+     *
+     *          This method is used to create a new account.
+     *          It calls AccountService.createAccount()
+     *          with the Account object that is instantiated
+     *          and defined through layers of validated input from user.
+     */
     @Override
     public void createAccount(Customer c) {
         Account a = new Account();
@@ -251,13 +315,145 @@ public class BankPresentationImpl implements BankPresentation {
                 }
         }
     }
+
+    /**
+     * This will call AccountService.getAccounts with the Customer object
+     * to instantiate an ArrayList to hold in memory for displaying
+     * all relevant data. (Balance / Nickname / Type). The private printAccounts
+     * method is then called to display to the user all of their accounts.
+     * Each account has a numbered option to invoke accountDetails
+     * for that account. Options to show all transactions for all
+     * customer's accounts and to create new account are also provided.
+     * @param c The Customer object instantiated by logIn or signUp.
+     */
     @Override
     public void accountSummary(Customer c) {
         printHeader(c,"Bank on IT - Account Summary", "");
-        List<Account> accounts = aService.getAccounts(c);
+        RevaList<Account> accounts = aService.getAccounts(c);
         printAccounts(accounts, c);
     }
 
+    /**
+     *  Helper method to accountSummary to split up accounts according to type
+     *  and handle user input. AccountService.getTypeAccounts splits the accounts ArrayList
+     *  into checking and savings accounts.
+     * @param accounts - ArrayList of all accounts associated to logged in customer
+     * @param c - Customer object representing the logged-in user.
+     */
+    private void printAccounts(RevaList<Account> accounts, Customer c) {
+        RevaList<Account> checking = aService.getTypeAccounts(accounts, 1);
+        RevaList<Account> savings = aService.getTypeAccounts(accounts, 2);
+        int startIdx = 1;
+        if (checking.size()>0) {
+            typeAccountSummary(checking, "CHECKING", startIdx);
+            startIdx += checking.size();
+        }
+        if (savings.size()>0) {
+            typeAccountSummary(savings, "SAVINGS", startIdx);
+        }
+        int possibleAccountChoices = checking.size() + savings.size();
+
+        RevArrayList<String> validOptions = new RevArrayList<>();
+        for (int i=1; i <= possibleAccountChoices; i++) {
+            validOptions.add(Integer.toString(i));
+        }
+        validOptions.add("x");
+        validOptions.add("z");
+        validOptions.add("c");
+        validOptions.add("v");
+        validOptions.add("t");
+
+        System.out.print(nSixTabs);
+        System.out.println("[c] Create New Account");
+        if ((checking.size() + savings.size()) > 0) {
+            System.out.print(sixTabs);
+            System.out.println("[v] View all Transactions");
+        }
+        if ((checking.size() + savings.size()) >= 2)
+        {
+            System.out.print(sixTabs);
+            System.out.println("[t] Transfer Between Accounts");
+        }
+        System.out.print(nSixTabs);
+        System.out.print("Enter: ");
+
+        String choice = scanner.nextLine();
+        if (validOptions.contains(choice)){
+            switch (choice) {
+                case "x":
+                    System.exit(0);
+                case "z":
+                    welcome();
+                    break;
+                case "c":
+                    createAccount(c);
+                    break;
+                case "v":
+                    // Call CustomerService.getTransactions here in case they enter something invalid, the recursive call to viewAllTransactions won't require a database query each time
+                    RevaList<Transaction> allTransactions = cService.getTransactions(c);
+                    viewAllTransactions(c, allTransactions);
+                    break;
+                case "t":
+                    transfer(c, checking, savings);
+                    break;
+                default:
+                    int choiceAsInt = Integer.parseInt(choice);
+                    if (choiceAsInt<=checking.size()) {
+                        // they chose a checking account
+                        accountDetails(c, checking.get(choiceAsInt-1));
+                    } else {
+                        // they chose a savings account
+                        accountDetails(c, savings.get((choiceAsInt-1)- checking.size()));
+                    }
+                    break;
+            }
+        } else {
+            logger.warn("Invalid Input");
+            printAccounts(accounts, c);
+        }
+    }
+
+    /**
+     * Helper method to printAccounts to Create a well formatted block from
+     * an ArrayList of Account objects.
+     * @param accounts - ArrayList of one type of Account
+     * @param type - String denoting savings or checking
+     * @param startIdx - int Where to start the numbering for user selection
+     */
+    private void typeAccountSummary(RevaList<Account> accounts, String type, int startIdx) {
+        StringBuilder accountBlock = new StringBuilder(nSixTabs);
+        String header = lineMaker("", String.format("%s ACCOUNTS", type), "", " ", 50);
+        accountBlock.append(header);
+        accountBlock.append("\n");
+        accountBlock.append(sixTabs);
+        String separator = lineMaker("", "", "", "-", 50);
+        accountBlock.append(separator);
+        accountBlock.append("\n");
+        for(int i = 0; i < accounts.size(); i++) {
+            accountBlock.append(sixTabs);
+            String leftJust = String.format(" [%d] %s", startIdx, accounts.get(i).getNickname());
+            String rightJust = String.format("$%.2f ", accounts.get(i).getBalance());
+            String line = lineMaker(leftJust, "", rightJust, " ", 50);
+            accountBlock.append(line);
+            accountBlock.append("\n");
+            startIdx++;
+        }
+        String lastLine = lineMaker("","","", " ", 50);
+        accountBlock.append(sixTabs);
+        accountBlock.append(lastLine);
+        System.out.println(accountBlock);
+    }
+
+    /**
+     * When a user select an account from accountSummary, they get here.
+     * This displays an account's balance as well as a list of available options.
+     * Deposit/Withdrawal/ViewTransactions is always available.
+     * Join/Remove/Transfer Ownership/Close Account are only available
+     * if the signed in customer is the owner of the account and not just a joined customer.
+     * @param c The Customer object that represents the logged-in user.
+     * @param a The Account object selected by the user in accountSummary to display details for
+     *
+     */
     @Override
     public void accountDetails(Customer c, Account a) {
         boolean isOwner = aService.checkOwnerShip(a, c);
@@ -292,6 +488,12 @@ public class BankPresentationImpl implements BankPresentation {
         accountOptions(c, a);
     }
 
+    /**
+     * The helper method called in accountDetails to handle the user's input.
+     * Called recursively until input is valid.
+     * @param c The Customer object that represents the logged-in user.
+     * @param a The Account object selected by the user in accountSummary to display details for
+     */
     private void accountOptions(Customer c, Account a) {
         System.out.print(sixTabs);
         System.out.print("Enter: ");
@@ -312,7 +514,8 @@ public class BankPresentationImpl implements BankPresentation {
                 withdrawal(c, a);
                 break;
             case "3":
-                List<Transaction> transactions = aService.getAccountTransactions(a);
+                // Call AccountService.getAccountTransactions here so viewTransactions can be called recursively without needed to query database again.
+                RevaList<Transaction> transactions = aService.getAccountTransactions(a);
                 viewTransactions(c, a, transactions);
                 break;
             case "4":
@@ -332,6 +535,15 @@ public class BankPresentationImpl implements BankPresentation {
                 accountOptions(c, a);
         }
     }
+
+    /**
+     * When a user selects Deposit from accountDetails, they get here
+     * AccountService.Deposit is called once valid input is received.
+     * If they enter something other than a positive integer, they
+     * are taken back to AccountDetails.
+     * @param c The Customer object that represents the logged-in user.
+     * @param a The Account object selected by the user in accountSummary to display details for
+     */
     @Override
     public void deposit(Customer c, Account a) {
         System.out.print(sixTabs);
@@ -351,6 +563,15 @@ public class BankPresentationImpl implements BankPresentation {
         accountDetails(c, a);
 
     }
+
+    /**
+     * When a user selects Withdrawal from accountDetails, they get here
+     * AccountService.Withdrawal is called once valid input is received.
+     * If they enter something other than a positive integer, they
+     * are taken back to AccountDetails.
+     * @param c The Customer object that represents the logged-in user.
+     * @param a The Account object selected by the user in accountSummary to display details for
+     */
     @Override
     public void withdrawal(Customer c, Account a) {
         System.out.print(sixTabs);
@@ -371,33 +592,19 @@ public class BankPresentationImpl implements BankPresentation {
             accountDetails(c, a);
         }
         accountDetails(c, a);
-
-    }
-    private void prettyTransfer(Account fromAccount, Account toAccount) {
-        StringBuilder transferBlock = new StringBuilder("\n\t\t");
-        transferBlock.append(lineMaker("", "Make a Transfer", "", " ", 80));
-        transferBlock.append("\n\t\t");
-        String fromAccountName = "";
-        String fromAccountBal = "";
-        String toAccountName = "";
-        String toAccountBal = "";
-        if (fromAccount!=null) {
-            fromAccountName = String.format(" From: %s", fromAccount.getNickname());
-            fromAccountBal = String.format(" Available Balance: %.2f", fromAccount.getBalance());
-        }
-        if (toAccount!=null) {
-            toAccountName = String.format("To: %s ", toAccount.getNickname());
-            toAccountBal = String.format("Balance: %.2f ", toAccount.getBalance());
-        }
-        transferBlock.append(lineMaker(fromAccountName, "", toAccountName, " ", 80));
-        transferBlock.append("\n\t\t");
-        transferBlock.append(lineMaker(fromAccountBal, "", toAccountBal, " ", 80));
-        transferBlock.append("\n\t\t");
-        System.out.print(transferBlock);
     }
 
+    /**
+     * When logged in Customer selects to transfer from AccountSummary, they get here.
+     * This ultimately calls AccountService.Transfer after getting valid input
+     * for the Account to transfer from, the account to transfer to, and the
+     * amount they wish to transfer.
+     * @param c The Customer object that represents the logged-in user.
+     * @param checking - An ArrayList of the signed in customer's checking accounts ()
+     * @param savings - An ArrayList of the signed in customer's savings accounts
+     */
     @Override
-    public void transfer(Customer c, List<Account> checking, List<Account> savings) {
+    public void transfer(Customer c, RevaList<Account> checking, RevaList<Account> savings) {
         Account fromAccount = null;
         Account toAccount = null;
         printHeader(c, "Bank on IT - Transfer", "[h] Account Summary ");
@@ -413,7 +620,7 @@ public class BankPresentationImpl implements BankPresentation {
         System.out.print("Transfer From: ");
         String fromAccountChoice = scanner.nextLine();
         int possibleAccountChoices = checking.size() + savings.size();
-        List<String> validOptions = new ArrayList<>();
+        RevArrayList<String> validOptions = new RevArrayList<>();
         for (int i=1; i <= possibleAccountChoices; i++) {
             validOptions.add(Integer.toString(i));
         }
@@ -438,7 +645,6 @@ public class BankPresentationImpl implements BankPresentation {
                         fromAccount = checking.get(fromAccountAsInt-1);
                     } else {
                         // they chose a savings account
-//                        System.out.printf("Account page for %s", savings.get((choiceAsInt-1) - checking.size()));
                         fromAccount = savings.get((fromAccountAsInt-1)- checking.size());
                     }
                     validOptions.remove(fromAccountChoice);
@@ -490,7 +696,6 @@ public class BankPresentationImpl implements BankPresentation {
             if (goodAmount > 0) {
                 boolean transferSuccessful = aService.Transfer(c, fromAccount, toAccount, Double.parseDouble(amount));
                 if (!transferSuccessful) {
-                    logger.warn("There was a problem processing that transfer");
                     transfer(c, checking, savings);
                 }
                 accountSummary(c);
@@ -504,21 +709,58 @@ public class BankPresentationImpl implements BankPresentation {
         }
     }
 
+    /**
+     * Helper method to display a nicely formatted block so user can see which account they've
+     * selected to transfer to and from and what the current balance of each is
+     * @param fromAccount - Account object representing the account the user selected to transfer from.
+     * @param toAccount - Account object representing the account th user selected to transfer to.
+     */
+    private void prettyTransfer(Account fromAccount, Account toAccount) {
+        StringBuilder transferBlock = new StringBuilder("\n\t\t");
+        transferBlock.append(lineMaker("", "Make a Transfer", "", " ", 80));
+        transferBlock.append("\n\t\t");
+        String fromAccountName = "";
+        String fromAccountBal = "";
+        String toAccountName = "";
+        String toAccountBal = "";
+        if (fromAccount!=null) {
+            fromAccountName = String.format(" From: %s", fromAccount.getNickname());
+            fromAccountBal = String.format(" Available Balance: %.2f", fromAccount.getBalance());
+        }
+        if (toAccount!=null) {
+            toAccountName = String.format("To: %s ", toAccount.getNickname());
+            toAccountBal = String.format("Balance: %.2f ", toAccount.getBalance());
+        }
+        transferBlock.append(lineMaker(fromAccountName, "", toAccountName, " ", 80));
+        transferBlock.append("\n\t\t");
+        transferBlock.append(lineMaker(fromAccountBal, "", toAccountBal, " ", 80));
+        transferBlock.append("\n\t\t");
+        System.out.print(transferBlock);
+    }
+
+    /**
+     * When logged in customer selects view transactions for an AccountDetail page, they get here.
+     * This will display a nicely formatted block containing each transaction for the selected account.
+     * After this the user can only go back to AccountSummary, LogOff, or close the application.
+     * @param c Customer object representing the logged in customer.
+     * @param a Account object representing the account the logged in customer selected to view transactions of
+     * @param transactions - ArrayList of Transaction objects
+     */
     @Override
-    public void viewTransactions(Customer c, Account a, List<Transaction> transactions) {
+    public void viewTransactions(Customer c, Account a, RevaList<Transaction> transactions) {
         printHeader(c, "Bank On IT - Account Transactions", "[h] Account Summary");
         StringBuilder transactionsBlock = new StringBuilder();
         transactionsBlock.append("\n\t\t");
         double bal = a.getBalance();
         String headRightJust = String.format("Current Balance: $%.2f ", bal);
-        transactionsBlock.append(lineMaker(transactions.get(0).getAccountNickname(), "", headRightJust, " ", 80));
+        transactionsBlock.append(lineMaker(a.getNickname(), "", headRightJust, " ", 80));
         transactionsBlock.append(" Running Balance");
         transactionsBlock.append("\n\t\t");
         transactionsBlock.append(lineMaker("","","","-", 80));
-        for (Transaction transaction : transactions) {
+        for(int i = 0; i < transactions.size(); i++) {
             transactionsBlock.append("\n\t\t");
-            String leftJust = String.format(" %s - (%s)", transaction.getTimestamp(), transaction.getName());
-            double amount = transaction.getAmount();
+            String leftJust = String.format(" %s - (%s)", transactions.get(i).getTimestamp(), transactions.get(i).getName());
+            double amount = transactions.get(i).getAmount();
             String amountString;
             if (amount > 0) {
                 // this is a deposit
@@ -550,14 +792,20 @@ public class BankPresentationImpl implements BankPresentation {
         }
     }
 
+    /**
+     * When a logged in customer selects to view all transactions from the AccountSummary page,
+     * they get here. This displays a nicely formatted block of all the transactions in the transactions ArrayList
+     * @param c - Customer object representing the logged in customer.
+     * @param transactions - ArrayList of Transaction objects associated with any of the user's accounts.
+     */
     @Override
-    public void viewAllTransactions(Customer c, List<Transaction> transactions) {
+    public void viewAllTransactions(Customer c, RevaList<Transaction> transactions) {
         printHeader(c, "Bank On IT - All Transactions", "[h] Account Summary");
         StringBuilder transactionsBlock = new StringBuilder();
-        for (Transaction transaction : transactions) {
+        for (int i = 0; i < transactions.size(); i++) {
             transactionsBlock.append("\n\t\t");
-            String leftJust = String.format("%s - (%s)    ", transaction.getTimestamp(), transaction.getName());
-            double amount = transaction.getAmount();
+            String leftJust = String.format("%s - (%s)    ", transactions.get(i).getTimestamp(), transactions.get(i).getName());
+            double amount = transactions.get(i).getAmount();
             String amountString;
             if (amount > 0) {
                 // this is a deposit
@@ -566,7 +814,7 @@ public class BankPresentationImpl implements BankPresentation {
                 // this is a withdrawal
                 amountString = String.format("-$%.2f", -amount);
             }
-            String line = lineMaker(leftJust, transaction.getAccountNickname(), amountString, " ", 80);
+            String line = lineMaker(leftJust, transactions.get(i).getAccountNickname(), amountString, " ", 80);
             transactionsBlock.append(line);
         }
         System.out.println(transactionsBlock);
@@ -588,6 +836,13 @@ public class BankPresentationImpl implements BankPresentation {
         }
     }
 
+    /**
+     *  If an account owner wishes to transfer ownership to someone joined on an account,
+     *  they get here. AccountService.changeAccountOwner is ultimately called with the validated
+     *  parameter the newOwnerId, along with the same parameter passed into this.
+     * @param c - Customer object representing the logged in customer.
+     * @param a - Account object representing the account the user selected to change ownership of.
+     */
     @Override
     public void transferAccountOwner(Customer c, Account a) {
         System.out.print(nSixTabs);
@@ -609,8 +864,6 @@ public class BankPresentationImpl implements BankPresentation {
                             logger.info("That's your user id and you're already the owner.\nEnter a user id of anyone joined to this account to transfer ownership");
                             transferAccountOwner(c, a);
                         }
-//                        Customer newOwner = new Customer();
-//                        newOwner.setId(newOwnerId);
                         boolean success = aService.changeAccountOwner(a, c, newOwnerId);
                         if (success) {
                             accountDetails(c, a);
@@ -625,7 +878,14 @@ public class BankPresentationImpl implements BankPresentation {
         }
     }
 
-
+    /**
+     * If the logged in customer selects to add a customer to an account
+     * from the AccountDetail page, they get here. AccountService.joinCustomer
+     * is called with the validated input of the id of the customer to join
+     * along with the parameters passed into this.
+     * @param c - Customer object representing the logged in customer.
+     * @param a - Account object representing the account the user selected to add another customer to.
+     */
     @Override
     public void addCustomerToAccount(Account a, Customer c) {
         System.out.print(nSixTabs);
@@ -655,6 +915,14 @@ public class BankPresentationImpl implements BankPresentation {
         accountSummary(c);
     }
 
+    /**
+     * If the logged in customer selects to remove a customer from an account
+     * from the AccountDetail page, they get here. AccountService.removeJoinedCustomer
+     * is called with the validated input of the id of the customer to remove
+     * along with the parameters passed into this.
+     * @param c - Customer object representing the logged in customer.
+     * @param a - Account object representing the account the user selected to remove customer from.
+     */
     @Override
     public void removeCustomerFromAccount(Account a, Customer c) {
         // would be kinda cool to print out all the customers who are joined onto the account
@@ -686,6 +954,12 @@ public class BankPresentationImpl implements BankPresentation {
         }
     }
 
+    /**
+     * When a logged-in customer selects to close an account, they get here.
+     * AccountService.deleteAccount is called once user confirms the action.
+     * @param c - Customer object representing the logged in customer.
+     * @param a - Account object representing the account the user selected to close.
+     */
     @Override
     public void deleteAccount(Customer c, Account a) {
         boolean confirmed = rollDeleteConfirm(a.getNickname());
@@ -695,6 +969,12 @@ public class BankPresentationImpl implements BankPresentation {
         accountSummary(c);
     }
 
+    /**
+     * Helper method for deleteAccount, called recursively until user
+     * explicitly types 'yes' or 'no' as confirmation.
+     * @param nickname - String the nickname given to the account
+     * @return boolean value representing the user's confirmation to close an account
+     */
     private boolean rollDeleteConfirm(String nickname) {
         System.out.printf("Are you sure you want to close %s? [yes/no]: ", nickname);
         String ans = scanner.nextLine();
@@ -710,103 +990,17 @@ public class BankPresentationImpl implements BankPresentation {
         return false;
     }
 
-    private void printAccounts(List<Account> accounts, Customer c) {
-        List<Account> checking = aService.getTypeAccounts(accounts, 1);
-        List<Account> savings = aService.getTypeAccounts(accounts, 2);
-        int startIdx = 1;
 
-        if (checking.size()>0) {
-            typeAccountSummary(checking, "CHECKING", startIdx);
-            startIdx += checking.size();
-        }
-        if (savings.size()>0) {
-            typeAccountSummary(savings, "SAVINGS", startIdx);
-        }
-        int possibleAccountChoices = checking.size() + savings.size();
-
-        List<String> validOptions = new ArrayList<>();
-        for (int i=1; i <= possibleAccountChoices; i++) {
-            validOptions.add(Integer.toString(i));
-        }
-        validOptions.add("x");
-        validOptions.add("z");
-        validOptions.add("c");
-        validOptions.add("v");
-        validOptions.add("t");
-
-        System.out.print(nSixTabs);
-        System.out.println("[c] Create New Account");
-        System.out.print(sixTabs);
-        System.out.println("[v] View all Transactions");
-        if ((checking.size() + savings.size()) >= 2)
-        {
-            System.out.print(sixTabs);
-            System.out.println("[t] Transfer Between Accounts");
-        }
-        System.out.print(nSixTabs);
-        System.out.print("Enter: ");
-
-        String choice = scanner.nextLine();
-        if (validOptions.contains(choice)){
-            switch (choice) {
-                case "x":
-                    System.exit(0);
-                case "z":
-                    welcome();
-                    break;
-                case "c":
-                    createAccount(c);
-                    break;
-                case "v":
-                    List<Transaction> allTransactions = cService.getTransactions(c);
-                    viewAllTransactions(c, allTransactions);
-                    break;
-                case "t":
-                    transfer(c, checking, savings);
-                    break;
-                default:
-                    int choiceAsInt = Integer.parseInt(choice);
-                    if (choiceAsInt<=checking.size()) {
-                        // they chose a checking account
-                        accountDetails(c, checking.get(choiceAsInt-1));
-                    } else {
-                        // they chose a savings account
-                        accountDetails(c, savings.get((choiceAsInt-1)- checking.size()));
-                    }
-                    break;
-            }
-        } else {
-            logger.warn("Invalid Input");
-            printAccounts(accounts, c);
-        }
-
-    }
-
-    private void typeAccountSummary(List<Account> accounts, String type, int startIdx) {
-        StringBuilder accountBlock = new StringBuilder(nSixTabs);
-        String header = lineMaker("", String.format("%s ACCOUNTS", type), "", " ", 50);
-        accountBlock.append(header);
-        accountBlock.append("\n");
-        accountBlock.append(sixTabs);
-        String separator = lineMaker("", "", "", "-", 50);
-        accountBlock.append(separator);
-        accountBlock.append("\n");
-        for (Account account : accounts) {
-            accountBlock.append(sixTabs);
-            String leftJust = String.format(" [%d] %s", startIdx, account.getNickname());
-            String rightJust = String.format("$%.2f ", account.getBalance());
-            String line = lineMaker(leftJust, "", rightJust, " ", 50);
-            accountBlock.append(line);
-            accountBlock.append("\n");
-            startIdx++;
-        }
-        String lastLine = lineMaker("","","", " ", 50);
-        accountBlock.append(sixTabs);
-        accountBlock.append(lastLine);
-        System.out.println(accountBlock);
-    }
-
-//TODO: overload this method for all those blank lines
+    /**
+     * Helper method used throughout the class to display text in a consistent format.
+     * @param leftJust - String - The string to left justify.
+     * @param centerJust - String - The string to center.
+     * @param rightJust - String - The string to right justify.
+     * @param filler - String - The single character to space between each element of the line. //TODO: make this char
+     * @param lineLen int - the total character length of the line to display
+     * @return String - The nicely formatted line of text.
+     */
+    //TODO: overload this method for all those blank lines
     private static String lineMaker(String leftJust, String centerJust, String rightJust, String filler, int lineLen) {
         // this maybe be cleaner with charArray methods?
         StringBuilder line = new StringBuilder();
@@ -830,6 +1024,12 @@ public class BankPresentationImpl implements BankPresentation {
         return line.toString();
     }
 
+    /**
+     * Helper method used throughout to consistently display text to inform user what menu they are in.
+     * @param c - Customer object representing the logged in customer.
+     * @param title - String - The main title for the display.
+     * @param home - String - Provided as "[h]" always except when already in AccountSummary
+     */
     private static void printHeader(Customer c, String title, String home) {
         System.out.println("\n\n\n");
         String line1 = lineMaker(" [x] exit", title, home, " ",100);
@@ -839,5 +1039,4 @@ public class BankPresentationImpl implements BankPresentation {
         String line2 = lineMaker(" [z] log out", name, customerId, " ", 100);
         System.out.println(line2);
     }
-
-}//
+}
