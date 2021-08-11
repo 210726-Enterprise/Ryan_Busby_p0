@@ -144,7 +144,7 @@ public class BankPresentationImpl implements BankPresentation {
             welcome();
         } else if (cService.usernameExists(username)) {
             logger.warn("Username Already Taken");
-            rollUsername();
+            signUp();
         }
         return username;
     }
